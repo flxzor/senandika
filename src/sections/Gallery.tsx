@@ -3,9 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Lenis from "lenis";
-import { motion, useScroll, useTransform, MotionValue } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  MotionValue,
+} from "framer-motion";
 
-const images: string[] = [
+// Data
+const allImages: string[] = [
   "1.jpg",
   "2.jpg",
   "3.jpg",
@@ -20,6 +26,16 @@ const images: string[] = [
   "12.jpg",
 ];
 
+// Helpers
+function chunkArray<T>(arr: T[], columnCount: number): T[][] {
+  const result: T[][] = Array.from({ length: columnCount }, () => []);
+  arr.forEach((item, index) => {
+    result[index % columnCount].push(item);
+  });
+  return result;
+}
+
+// Types
 type Dimension = {
   width: number;
   height: number;
@@ -30,31 +46,24 @@ type ColumnProps = {
   y: MotionValue<number>;
 };
 
+// Column
 function Column({ images, y }: ColumnProps) {
   return (
     <motion.div
       style={{ y }}
-      className="
-        relative flex flex-col gap-[2vw]
-        w-[25%] min-w-[250px]
-        will-change-transform
-      "
+      className="relative flex flex-col gap-4 w-full md:w-[25%]"
     >
       {images.map((img) => (
         <div
           key={img}
-          className="
-            relative w-full h-[45vh]
-            rounded-xl overflow-hidden
-          "
+          className="relative w-full h-[30vh] md:h-[45vh] rounded-xl overflow-hidden"
         >
           <Image
             src={`/images/${img}`}
             alt={img}
             fill
             className="object-cover"
-            sizes="25vw"
-            priority={false}
+            sizes="(max-width: 768px) 50vw, 25vw"
           />
         </div>
       ))}
@@ -62,6 +71,7 @@ function Column({ images, y }: ColumnProps) {
   );
 }
 
+// Page
 export default function Home() {
   const galleryRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,48 +79,59 @@ export default function Home() {
     width: 0,
     height: 0,
   });
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isMobile = mounted && dimension.width < 768;
+  const columnCount = isMobile ? 2 : 4;
+
+  // Image selection
+  const activeImages = mounted
+    ? isMobile
+      ? allImages.slice(0, 8)
+      : allImages
+    : allImages;
+
+  const columns = chunkArray(activeImages, columnCount);
+  const { height } = dimension;
+
+  // Scroll
   const { scrollYProgress } = useScroll({
     target: galleryRef,
     offset: ["start end", "end start"],
   });
 
-  const { height } = dimension;
+  // Parallax (static hooks)
+  const mobileFactor = 0.18;
 
-  const y1 = useTransform(
-    scrollYProgress,
-    [0, 1],
-    [-height * 0.2, height * 0.9]
-  );
+  const y1 = useTransform(scrollYProgress, [0, 1], [
+    isMobile ? -height * mobileFactor : -height * 0.2,
+    isMobile ? height * mobileFactor : height * 0.9,
+  ]);
 
-  const y2 = useTransform(
-    scrollYProgress,
-    [0, 1],
-    [-height * 0.6, height * 1.5]
-  );
+  const y2 = useTransform(scrollYProgress, [0, 1], [
+    isMobile ? height * mobileFactor : -height * 0.6,
+    isMobile ? -height * mobileFactor : height * 1.5,
+  ]);
 
-  const y3 = useTransform(
-    scrollYProgress,
-    [0, 1],
-    [-height * 0.2, height * 0.9]
-  );
+  const y3 = useTransform(scrollYProgress, [0, 1], [
+    -height * 0.2,
+    height * 0.9,
+  ]);
 
-  const y4 = useTransform(
-    scrollYProgress,
-    [0, 1],
-    [-height * 0.4, height * 1.2]
-  );
+  const y4 = useTransform(scrollYProgress, [0, 1], [
+    -height * 0.4,
+    height * 1.2,
+  ]);
 
+  const parallax = isMobile ? [y1, y2] : [y1, y2, y3, y4];
+
+  // Effects
   useEffect(() => {
-    const lenis = new Lenis({
-      smoothWheel: true,
-      lerp: 0.08,
-    });
-
-    const raf = (time: number) => {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    };
-
     const onResize = () => {
       setDimension({
         width: window.innerWidth,
@@ -120,30 +141,40 @@ export default function Home() {
 
     onResize();
     window.addEventListener("resize", onResize);
+
+    const lenis = new Lenis({
+      lerp: isMobile ? 0.2 : 0.08,
+    });
+
+    const raf = (time: number) => {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    };
+
     requestAnimationFrame(raf);
 
     return () => {
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [isMobile]);
 
+  // Render
   return (
     <main className="relative">
-      {/* Gallery */}
       <section
         ref={galleryRef}
         className="
-          relative flex items-start
-          h-[220vh]
-          bg-senandika
-          gap-[2vw] p-[2vw]
+          relative bg-[#ffb7d3]
+          p-4 md:p-[2vw]
+          min-h-screen md:h-[220vh]
           overflow-hidden
+          grid grid-cols-2 gap-4
+          md:flex md:gap-[2vw]
         "
       >
-        <Column images={images.slice(0, 3)} y={y1} />
-        <Column images={images.slice(3, 6)} y={y2} />
-        <Column images={images.slice(6, 9)} y={y3} />
-        <Column images={images.slice(9, 12)} y={y4} />
+        {columns.map((imgs, i) => (
+          <Column key={i} images={imgs} y={parallax[i]} />
+        ))}
       </section>
     </main>
   );

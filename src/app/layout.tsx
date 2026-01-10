@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Lora } from "next/font/google";
 import "./globals.css";
 
-const font = Inter({
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+const font = Lora({
+  weight: ["400", "500", "600", "700"],
+  style: ["normal"],
   subsets: ["latin"],
 });
 
@@ -19,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={font.className}>
         {children}
       </body>
     </html>
