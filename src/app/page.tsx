@@ -7,9 +7,15 @@ export default function Home() {
   return (
     <div>
       <Header />
-      <HomePage />
-      <Gallery />
-      <About />
+      <section id="home">
+        <HomePage />
+      </section>
+      <section id="gallery">
+        <Gallery />
+      </section>
+      <section id="about">
+        <About />
+      </section>
     </div>
   );
 }
